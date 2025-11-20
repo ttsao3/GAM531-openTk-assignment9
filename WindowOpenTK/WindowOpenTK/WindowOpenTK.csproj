@@ -8,21 +8,33 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Assets\100_1174_seamless.jpg" />
     <None Remove="Assets\box.jpg" />
     <None Remove="Assets\crystal.png" />
+    <None Remove="Assets\door_01_orange.png" />
     <None Remove="Assets\floor.jpg" />
     <None Remove="Assets\gold.jpg" />
+    <None Remove="Assets\templategrid_albedo.png" />
     <None Remove="Assets\wall.jpg" />
     <None Remove="Shaders\phong.frag" />
     <None Remove="Shaders\phong.vert" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="Assets\100_1174_seamless.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\door_01_orange.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Assets\floor.jpg">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Assets\gold.jpg">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\templategrid_albedo.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Assets\wall.jpg">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

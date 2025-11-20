@@ -13,7 +13,8 @@ namespace WindowOpenTK
     {
         private Mesh _cubeMesh;
         private Texture[] _cubeTextures = new Texture[3];
-        private Texture _roomTexture, _floorTexture;
+        // NEW: Textures for room, wall and placeholder
+        private Texture _roomTexture, _floorTexture, _doorTexture, _wallTexture, _placeHolderTexture;
 
         private Vector3[] _cubePos = new Vector3[]
         {
@@ -22,8 +23,11 @@ namespace WindowOpenTK
             new Vector3(6f, 2f, 3f)
         };
 
-        private Vector3[] lightPos = new Vector3[3];
+        // NEW: Scene objects with collision
+        private List<GameObject> _sceneObjects;
+        private AABBCollider _playerCollider; // Player collision box
 
+        private Vector3[] lightPos = new Vector3[3];
         private Vector3 lightColor = new Vector3(1.0f, 1.0f, 1.0f);
 
         private Shader _shader;
@@ -37,7 +41,7 @@ namespace WindowOpenTK
 
         private bool[] _lightOn = { true, true, true };
 
-        //add camera limit for room
+        // add camera limits for room
         private const float X_limit = 9.5f;
         private const float Y_limit = 3.5f;
         private const float Z_limit = 9.5f;
@@ -48,7 +52,6 @@ namespace WindowOpenTK
         {
         }
 
-        // Called once when the game starts, ideal for loading resources
         protected override void OnLoad()
         {
             base.OnLoad();
@@ -59,7 +62,7 @@ namespace WindowOpenTK
             //36 vertices to have 12 triangle for a 3D cube (2 triangles per face * 6 faces with * 3 vertices per triangle)
             float[] _vertices =
             {
-                //2 triangles each 
+                //2 triangles each
                 // Front face
                 -0.5f, -0.5f,  0.5f,  0f, 0f, 1f, 0f,0f,
                  0.5f, -0.5f,  0.5f,  0f, 0f, 1f, 1f,0f,
@@ -123,16 +126,47 @@ namespace WindowOpenTK
             _cubeTextures[2] = Texture.LoadFromFile("Assets/gold.jpg");
             _roomTexture = Texture.LoadFromFile("Assets/wall.jpg");
             _floorTexture = Texture.LoadFromFile("Assets/floor.jpg");
+            _doorTexture = Texture.LoadFromFile("Assets/door_01_orange.png");
+            _wallTexture = Texture.LoadFromFile("Assets/100_1174_seamless.jpg");
+            _placeHolderTexture = Texture.LoadFromFile("Assets/templategrid_albedo.png");
 
-            //setup shader
+            // setup shader 
             _shader = new Shader("Shaders/phong.vert", "Shaders/phong.frag");
             //cam setup
             _camera = new Camera(new Vector3(0.0f, 1.0f, 8.0f));
             //make sure mouse cursor invisible and captured so we can have proper FPS-camera movement
             CursorState = CursorState.Grabbed;
 
+            // NEW: Initialize collision system
+            _sceneObjects = new List<GameObject>();
+
+            // Create player collision box (small box around camera)
+            _playerCollider = new AABBCollider(_camera.Position, new Vector3(1f, 2f, 1f));
+
+            // NEW: Add collision to original cubes, and wrap in GameObjects
+            for (int i = 0; i < 3; i++)
+            {
+                var cube = new GameObject($"Cube {i}", _cubePos[i], new Vector3(1f, 1f, 1f));
+                _sceneObjects.Add(cube);
+            }
+
+            // NEW: Add a door (tall and thin, like a door)
+            var door = new GameObject("Door", new Vector3(-3f, 0f, -5f), new Vector3(2f, 4f, 0.3f));
+            _sceneObjects.Add(door);
+
+            // NEW: Add a wall (long horizontal wall)
+            var wall = new GameObject("Wall", new Vector3(4f, 0f, 0f), new Vector3(0.5f, 4f, 6f));
+            _sceneObjects.Add(wall);
+
+            // NEW: Add an NPC placeholder (human-sized box)
+            var npc = new GameObject("NPC", new Vector3(0f, -3f, 4f), new Vector3(1f, 2f, 1f));
+            _sceneObjects.Add(npc);
+
+            //for testing purposes
             //Console.WriteLine($"aPosition location: {vertexLocation}");
             //Console.WriteLine($"aNormal location: {normalLocation}");
+
+            //Console.WriteLine($"Objects with collision: {_sceneObjects.Count}"); //shoule be 6 objects total
         }
 
         //called when i need to update any game visuals
@@ -171,16 +205,31 @@ namespace WindowOpenTK
             _cubeMesh.Draw(); // reuse same cube geometry (since room is also a cube)
 
             // setup model and light to each and draw
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < _sceneObjects.Count; i++)
             {
-                lightPos[i] = _cubePos[i] + new Vector3(0.0f, 2.0f, 0.0f);
-                _shader.SetVector3($"lightPos[{i}]", lightPos[i]);
-                GL.Uniform1(GL.GetUniformLocation(_shader.Handle, $"lightOn[{i}]"), _lightOn[i] ? 1 : 0);
+                var obj = _sceneObjects[i];
 
-                Matrix4 model = Matrix4.CreateTranslation(_cubePos[i]);
+                // the lights
+                if (i < 3)
+                {
+                    lightPos[i] = obj.Position + new Vector3(0.0f, 2.0f, 0.0f);
+                    _shader.SetVector3($"lightPos[{i}]", lightPos[i]);
+                    GL.Uniform1(GL.GetUniformLocation(_shader.Handle, $"lightOn[{i}]"), _lightOn[i] ? 1 : 0);
+                }
+
+                Matrix4 model = obj.GetModelMatrix();
                 _shader.SetMatrix4("model", model);
 
-                _cubeTextures[i].Use(TextureUnit.Texture0);
+                // Choose texture based on object type
+                if (obj.Name == "Door")
+                    _doorTexture.Use(TextureUnit.Texture0);
+                else if (obj.Name == "Wall")
+                    _wallTexture.Use(TextureUnit.Texture0);
+                else if (obj.Name == "NPC")
+                    _placeHolderTexture.Use(TextureUnit.Texture0);
+                else
+                    _cubeTextures[i].Use(TextureUnit.Texture0);
+
                 _cubeMesh.Draw();
             }
 
@@ -199,26 +248,58 @@ namespace WindowOpenTK
             deltaTime = (float)args.Time;
             float speed = 6.5f * deltaTime;
 
+            // NEW: Store old position for collision check
+            Vector3 oldPosition = _camera.Position;
+            Vector3 newPosition = _camera.Position;
+
             if (input.IsKeyDown(Keys.W))
-                _camera.Position += _camera.Front * speed;
+                newPosition += _camera.Front * speed;
             if (input.IsKeyDown(Keys.S))
-                _camera.Position -= _camera.Front * speed;
+                newPosition -= _camera.Front * speed;
             if (input.IsKeyDown(Keys.A))
-                _camera.Position -= _camera.Right * speed;
+                newPosition -= _camera.Right * speed;
             if (input.IsKeyDown(Keys.D))
-                _camera.Position += _camera.Right * speed;
+                newPosition += _camera.Right * speed;
             if (input.IsKeyDown(Keys.E))
-                _camera.Position += _camera.Up * speed;
+                newPosition += _camera.Up * speed;
             if (input.IsKeyDown(Keys.Q))
-                _camera.Position -= _camera.Up * speed;
+                newPosition -= _camera.Up * speed;
             if (MouseState.IsButtonPressed(MouseButton.Left))
                 _lightOn[0] = !_lightOn[0];
             if (MouseState.IsButtonPressed(MouseButton.Right))
                 _lightOn[1] = !_lightOn[1];
             if (MouseState.IsButtonPressed(MouseButton.Middle))
                 _lightOn[2] = !_lightOn[2];
+
             if (input.IsKeyDown(Keys.Escape))
                 Close();
+
+
+            // NEW: Check collision before moving
+            // Update player collider to new position temporarily
+            _playerCollider.UpdatePosition(newPosition);
+
+            bool collisionDetected = false;
+            foreach (var obj in _sceneObjects)
+            {
+                if (_playerCollider.Intersects(obj.Collider))
+                {
+                    collisionDetected = true;
+                    break;
+                }
+            }
+
+            // NEW: If collision detected, don't move (stay at old position)
+            if (collisionDetected)
+            {
+                _playerCollider.UpdatePosition(oldPosition);
+                _camera.Position = oldPosition;
+            }
+            else
+            {
+                // No collision, apply the movement
+                _camera.Position = newPosition;
+            }
 
             // Prevent camera from leaving the room
             _camera.Position = new Vector3(
@@ -226,6 +307,10 @@ namespace WindowOpenTK
                 MathHelper.Clamp(_camera.Position.Y, -Y_limit, Y_limit),
                 MathHelper.Clamp(_camera.Position.Z, -Z_limit, Z_limit)
             );
+
+            // NEW: Update player collider to final position
+            _playerCollider.UpdatePosition(_camera.Position);
+            
         }
 
         protected override void OnMouseMove(MouseMoveEventArgs e)
@@ -256,7 +341,7 @@ namespace WindowOpenTK
             _camera.Fov -= e.Offset.Y * 5.0f;
             _camera.Fov = MathHelper.Clamp(_camera.Fov, 30.0f, 90.0f);
         }
-  
+
         // Called automatically whenever the window is resized
         protected override void OnResize(ResizeEventArgs e)
         {
