@@ -229,6 +229,7 @@ namespace WindowOpenTK
                     _placeHolderTexture.Use(TextureUnit.Texture0);
                 else
                     _cubeTextures[i].Use(TextureUnit.Texture0);
+                    
 
                 _cubeMesh.Draw();
             }
