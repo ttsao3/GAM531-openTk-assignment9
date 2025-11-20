@@ -14,7 +14,7 @@ One of the chaleges was figureing out how to implement a GameObject class that w
 
 The solution was to create a GameObject wrapper that stores the position, scale, and collider data, while using GetModelMatrix() fucntion to generate transformations for my existing shader system. This way it keeps my Mesh.cs, Shader.cs and Texture.cs unchanged and allows collision system to be added on top of my existing rendering pipeline.
 
-side note:" used Artifical intalligence assistance to help design the architecture for integrating "GameObject" with my existing rendering classes."
+side note: "end up using the help of AI assistance to help solving integration of "GameObject" with my existing rendering classes."
 
 ## Credits
 AABB Collision context:
