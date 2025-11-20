@@ -27,6 +27,10 @@ namespace WindowOpenTK
         private List<GameObject> _sceneObjects;
         private AABBCollider _playerCollider; // Player collision box
 
+        // NEW: touch detection for door
+        private const float doorTouchDistance = 3.0f;
+        private bool wasAtDoor = false;
+
         private Vector3[] lightPos = new Vector3[3];
         private Vector3 lightColor = new Vector3(1.0f, 1.0f, 1.0f);
 
@@ -311,7 +315,49 @@ namespace WindowOpenTK
 
             // NEW: Update player collider to final position
             _playerCollider.UpdatePosition(_camera.Position);
-            
+
+            // NEW: Xheck for simple door touch detection
+            GameObject nearbyDoor = GetDoor();
+            // NEW: Simple command prompt for interaction (no interaction system yet)
+            if (nearbyDoor != null)
+            {
+                if (!wasAtDoor)
+                {
+                    wasAtDoor = true;
+                    Console.WriteLine("You approached the door, press F to open!");
+                }
+
+                if (input.IsKeyPressed(Keys.F))
+                {
+                    Console.WriteLine("You opened the door!");
+                }
+            }
+            else
+            {
+                wasAtDoor = false;
+            }
+        }
+
+        // NEW: Check if player is near the door
+        private GameObject GetDoor()
+        {
+            foreach (var obj in _sceneObjects)
+            {
+                //check door object
+                if (obj.Name == "Door")
+                {
+                    //calculate for length from camera to door
+                    float distanceToDoor = (obj.Position - _camera.Position).Length;
+
+                    //if within touch distance, return the door object
+                    if (distanceToDoor <= doorTouchDistance)
+                    {
+                        return obj;
+                    }
+                }
+            }
+            //return null if no door is close enough
+            return null;
         }
 
         protected override void OnMouseMove(MouseMoveEventArgs e)
