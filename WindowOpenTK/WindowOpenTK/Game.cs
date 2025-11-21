@@ -28,8 +28,8 @@ namespace WindowOpenTK
         private AABBCollider _playerCollider; // Player collision box
 
         // NEW: touch detection for door
-        private const float doorTouchDistance = 3.0f;
-        private bool wasAtDoor = false;
+        private const float _doorTouchDistance = 2.0f;
+        private bool _wasAtDoor = false;
 
         private Vector3[] lightPos = new Vector3[3];
         private Vector3 lightColor = new Vector3(1.0f, 1.0f, 1.0f);
@@ -321,9 +321,9 @@ namespace WindowOpenTK
             // NEW: Simple command prompt for interaction (no interaction system yet)
             if (nearbyDoor != null)
             {
-                if (!wasAtDoor)
+                if (!_wasAtDoor)
                 {
-                    wasAtDoor = true;
+                    _wasAtDoor = true;
                     Console.WriteLine("You approached the door, press F to open!");
                 }
 
@@ -334,7 +334,7 @@ namespace WindowOpenTK
             }
             else
             {
-                wasAtDoor = false;
+                _wasAtDoor = false;
             }
         }
 
@@ -350,7 +350,7 @@ namespace WindowOpenTK
                     float distanceToDoor = (obj.Position - _camera.Position).Length;
 
                     //if within touch distance, return the door object
-                    if (distanceToDoor <= doorTouchDistance)
+                    if (distanceToDoor <= _doorTouchDistance)
                     {
                         return obj;
                     }
